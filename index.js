@@ -159,6 +159,29 @@ app.post("/api/save", async (req, res) => {
   }
 });
 
+// Read 
+
+app.post("/api/read", async (req, res) => {
+  try {
+    const { collection, filter } = req.body;
+
+    if (!collection) {
+      return res.status(400).json({ error: "Collection is required" });
+    }
+
+    // Default filter = {} (fetch all documents)
+    const queryFilter = filter || {};
+
+    const result = await db.collection(collection).find(queryFilter).toArray();
+
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 
 // ---------------- START SERVER ----------------
 const PORT = process.env.PORT || 5000;
