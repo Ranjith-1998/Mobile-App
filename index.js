@@ -159,11 +159,10 @@ app.post("/api/save", async (req, res) => {
   }
 });
 
-// Read 
-
+// READ
 app.post("/api/read", async (req, res) => {
   try {
-    const { collection, filter } = req.body;
+    const { collection, filter, fields } = req.body;
 
     if (!collection) {
       return res.status(400).json({ error: "Collection is required" });
@@ -171,8 +170,12 @@ app.post("/api/read", async (req, res) => {
 
     // Default filter = {} (fetch all documents)
     const queryFilter = filter || {};
+    const projection = fields || {}; // default = all fields
 
-    const result = await db.collection(collection).find(queryFilter).toArray();
+    const result = await db
+      .collection(collection)
+      .find(queryFilter, { projection })
+      .toArray();
 
     res.json(result);
   } catch (err) {
@@ -180,6 +183,7 @@ app.post("/api/read", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
 
 
 
