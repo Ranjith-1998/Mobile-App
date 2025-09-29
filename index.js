@@ -97,13 +97,13 @@ app.post("/api/login", async (req, res) => {
 // ---------------- CREATE COLLECTION API ----------------
 app.post("/api/create-collection", async (req, res) => {
   try {
-    const { table } = req.body;
+    const { collection } = req.body;
 
-    if (!table) {
+    if (!collection) {
       return res.status(400).json({ error: "Table (collection) name is required" });
     }
 
-    const safeCollection = table.toLowerCase().replace(/[^a-z0-9_]/g, "");
+    const safeCollection = collection.toLowerCase().replace(/[^a-z0-9_]/g, "");
     if (!safeCollection) {
       return res.status(400).json({ error: "Invalid collection name" });
     }
@@ -138,13 +138,13 @@ app.post("/api/create-collection", async (req, res) => {
 // CREATE
 app.post("/api/save", async (req, res) => {
   try {
-    const { table, data } = req.body;
-    if (!table || !data) {
+    const { collection, data } = req.body;
+    if (!collection || !data) {
       return res.status(400).json({ error: "Table and data are required" });
     }
 
     // Dynamic collection name
-    const Model = mongoose.connection.collection(table);
+    const Model = mongoose.connection.collection(collection);
 
     // Insert the document
     const result = await Model.insertOne(data);
