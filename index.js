@@ -7,6 +7,7 @@ const cors = require("cors");
 const app = express();
 app.use(cors());
 app.use(express.json());
+const { ObjectId } = require("mongodb");
 
 // ---------------- DB CONNECT ----------------
 mongoose.connect(process.env.MONGO_URI, {
@@ -140,18 +141,31 @@ app.post("/api/save", async (req, res) => {
   try {
     const { collection, data } = req.body;
     if (!collection || !data) {
-      return res.status(400).json({ error: "Table and data are required" });
+      return res.status(400).json({ error: "Collection and data are required" });
     }
 
-    // Dynamic collection name
+    // Dynamic collection
     const Model = mongoose.connection.collection(collection);
 
-    // Insert the document
+    // Convert string IDs to ObjectId where needed
+    const convertToObjectId = (val) => {
+      if (typeof val === "string" && /^[0-9a-fA-F]{24}$/.test(val)) {
+        return new ObjectId(val);
+      }
+      return val;
+    };
+
+    // Loop through all fields of data
+    Object.keys(data).forEach((key) => {
+      data[key] = convertToObjectId(data[key]);
+    });
+
+    // Insert document
     const result = await Model.insertOne(data);
 
     res.status(201).json({
       message: "Row inserted",
-      data: result.ops ? result.ops[0] : result, // ops in older driver, insertedId in newer
+      insertedId: result.insertedId,
     });
   } catch (err) {
     console.error("Save API error:", err);
