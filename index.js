@@ -8,7 +8,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 const { ObjectId } = require("mongodb");
-const { v4: uuidv4 } = require("uuid");
+//const { v4: uuidv4 } = require("uuid");
 
 
 // ---------------- DB CONNECT ----------------
@@ -204,7 +204,7 @@ app.post("/api/save", async (req, res) => {
     data.modified_on = now;
 
     // Unique Version ID like Oracle UUID
-    data.versionid = uuidv4();
+    //data.versionid = uuidv4();
     
     // ✅ Insert
     const result = await Model.insertOne(data);
