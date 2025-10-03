@@ -8,6 +8,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 const { ObjectId } = require("mongodb");
+const { v4: uuidv4 } = require("uuid");
+
 
 // ---------------- DB CONNECT ----------------
 mongoose.connect(process.env.MONGO_URI, {
