@@ -64,6 +64,7 @@ app.post("/api/register", async (req, res) => {
 });
 
 // ---------------- LOGIN ----------------
+
 app.post("/api/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -78,17 +79,26 @@ app.post("/api/login", async (req, res) => {
       return res.status(400).json({ error: "Invalid Username" });
     }
 
-    // check password (plain text for now)
+    // check password (plain text for now — should use bcrypt)
     if (user.password !== password) {
       return res.status(400).json({ error: "Invalid Password" });
     }
 
-    // generate JWT
-    const token = jwt.sign({ userId: user._id }, JWT_SECRET, {
-      expiresIn: "1h",
-    });
+    // generate JWT with both userId and email
+    const token = jwt.sign(
+      { userId: user._id, email: user.email },
+      JWT_SECRET,
+      { expiresIn: "1h" }
+    );
 
-    res.json({ success: true, token, user });
+    res.json({
+      success: true,
+      token,
+      user: {
+        _id: user._id,
+        email: user.email,
+      },
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
@@ -135,6 +145,7 @@ app.post("/api/create-collection", async (req, res) => {
 });
 
 
+
 // ---------------- COMMON SAVE API ----------------
 // CREATE
 app.post("/api/save", async (req, res) => {
@@ -144,23 +155,53 @@ app.post("/api/save", async (req, res) => {
       return res.status(400).json({ error: "Collection and data are required" });
     }
 
-    // Dynamic collection
+    // ✅ Extract token from Authorization header
+    const authHeader = req.headers["authorization"];
+    if (!authHeader) {
+      return res.status(401).json({ error: "Authorization header missing" });
+    }
+
+    const token = authHeader.split(" ")[1]; // Bearer <token>
+    if (!token) {
+      return res.status(401).json({ error: "Token missing" });
+    }
+
+    // ✅ Decode token
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ error: "Invalid or expired token" });
+    }
+
+    // ✅ Ensure user email is available
+    const userEmail = decoded.email;
+    if (!userEmail) {
+      return res.status(401).json({ error: "Invalid token payload" });
+    }
+
+    // ✅ Dynamic collection
     const Model = mongoose.connection.collection(collection);
 
-    // Convert string IDs to ObjectId where needed
+    // ✅ Convert ObjectId strings
     const convertToObjectId = (val) => {
       if (typeof val === "string" && /^[0-9a-fA-F]{24}$/.test(val)) {
         return new ObjectId(val);
       }
       return val;
     };
-
-    // Loop through all fields of data
     Object.keys(data).forEach((key) => {
       data[key] = convertToObjectId(data[key]);
     });
 
-    // Insert document
+    // ✅ Add audit fields
+    const now = new Date();
+    data.created_by = userEmail;
+    data.modified_by = userEmail;
+    data.created_on = now;
+    data.modified_on = now;
+
+    // ✅ Insert
     const result = await Model.insertOne(data);
 
     res.status(201).json({
@@ -172,6 +213,7 @@ app.post("/api/save", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
 
 // READ
 app.post("/api/read", async (req, res) => {
