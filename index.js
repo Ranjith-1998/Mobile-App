@@ -201,6 +201,9 @@ app.post("/api/save", async (req, res) => {
     data.created_on = now;
     data.modified_on = now;
 
+    // Unique Version ID like Oracle UUID
+    data.versionid = uuidv4();
+    
     // ✅ Insert
     const result = await Model.insertOne(data);
 
