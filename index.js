@@ -272,7 +272,7 @@ app.get("/api/report/:slug", async (req, res) => {
     console.error("Report error:", err);
     res.status(500).json({ error: err.message });
   }
-});
+})
 
 
 // ---------------- START SERVER ----------------
