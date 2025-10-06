@@ -197,11 +197,12 @@ app.post("/api/save", async (req, res) => {
     });
 
     // ✅ Add audit fields
-    const now = new Date();
+    const today = new Date();
+    const created_on = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
     data.created_by = userEmail;
     data.modified_by = userEmail;
-    data.created_on = now;
-    data.modified_on = now;
+    data.created_on = created_on;
+    data.modified_on = created_on;
     //data.versionid = uuidv4(); // Unique Version ID like Oracle UUID
     
     // ✅ Insert
