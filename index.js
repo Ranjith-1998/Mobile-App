@@ -248,26 +248,66 @@ app.get("/api/report/:slug", async (req, res) => {
   try {
     const slug = req.params.slug;
 
-    // Find report by slug
+    // 1️⃣ Find report by slug
     const report = await mongoose.connection
       .collection("reportsql")
       .findOne({ slug });
 
-    if (!report) {
-      return res.status(404).json({ error: "Report not found" });
+    if (!report) return res.status(404).json({ error: "Report not found" });
+
+    // 2️⃣ Clone pipeline to avoid modifying the stored one
+    const pipeline = JSON.parse(JSON.stringify(report.pipeline));
+
+    // 3️⃣ Find all placeholders in the pipeline
+    const placeholders = [];
+    function findPlaceholders(obj) {
+      if (typeof obj !== "object" || obj === null) return;
+      for (let key in obj) {
+        if (typeof obj[key] === "string" && /^__.*__$/.test(obj[key])) {
+          placeholders.push({ path: key, value: obj[key], parent: obj });
+        } else if (typeof obj[key] === "object") {
+          findPlaceholders(obj[key]);
+        }
+      }
+    }
+    pipeline.forEach(stage => findPlaceholders(stage));
+
+    // 4️⃣ Replace placeholders with frontend values
+    for (let ph of placeholders) {
+      const paramName = ph.value.replace(/__/g, ""); // "__SD__" -> "SD"
+      const paramValue = req.query[paramName.toLowerCase()]; // frontend sends lowercase names
+
+      if (!paramValue) {
+        return res.status(400).json({
+          error: `Please provide parameter: ${paramName.toLowerCase()}`
+        });
+      }
+
+      // Special handling for dates (sd, ed)
+      if (paramName.toLowerCase() === "sd" || paramName.toLowerCase() === "ed") {
+        const parts = paramValue.split(/[-\/]/);
+        const dateObj = new Date(parts[2], parts[1] - 1, parts[0]);
+        if (paramName.toLowerCase() === "ed") dateObj.setHours(23, 59, 59, 999);
+        ph.parent[ph.path] = dateObj;
+      } else {
+        // Other parameters, just replace string
+        ph.parent[ph.path] = paramValue;
+      }
     }
 
-    // Run pipeline on baseCollection
+    // 5️⃣ Run aggregation
     const result = await mongoose.connection
       .collection(report.baseCollection)
-      .aggregate(report.pipeline)
+      .aggregate(pipeline)
       .toArray();
 
+    // 6️⃣ Return response
     res.json({
       reportname: report.reportname,
       slug: report.slug,
       data: result
     });
+
   } catch (err) {
     console.error("Report error:", err);
     res.status(500).json({ error: err.message });
