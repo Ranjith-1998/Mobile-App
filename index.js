@@ -243,7 +243,36 @@ app.post("/api/read", async (req, res) => {
   }
 });
 
+//------------------REPORTING API-------------------
+app.get("/api/report/:slug", async (req, res) => {
+  try {
+    const slug = req.params.slug;
 
+    // Find report by slug
+    const report = await mongoose.connection
+      .collection("reportsql")
+      .findOne({ slug });
+
+    if (!report) {
+      return res.status(404).json({ error: "Report not found" });
+    }
+
+    // Run pipeline on baseCollection
+    const result = await mongoose.connection
+      .collection(report.baseCollection)
+      .aggregate(report.pipeline)
+      .toArray();
+
+    res.json({
+      reportname: report.reportname,
+      slug: report.slug,
+      data: result
+    });
+  } catch (err) {
+    console.error("Report error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 
 // ---------------- START SERVER ----------------
