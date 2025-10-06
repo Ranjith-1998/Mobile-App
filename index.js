@@ -244,7 +244,7 @@ app.post("/api/read", async (req, res) => {
 });
 
 //------------------REPORTING API-------------------
-{/*app.get("/api/report/:slug", async (req, res) => {
+app.get("/api/report/:slug", async (req, res) => {
   try {
     const slug = req.params.slug;
 
@@ -272,7 +272,7 @@ app.post("/api/read", async (req, res) => {
     console.error("Report error:", err);
     res.status(500).json({ error: err.message });
   }
-});*/}
+});
 
 
 // ---------------- START SERVER ----------------
