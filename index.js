@@ -243,7 +243,6 @@ app.post("/api/read", async (req, res) => {
   }
 });
 
-//------------------REPORTING API-------------------
 app.get("/api/report/:slug", async (req, res) => {
   try {
     const slug = req.params.slug;
@@ -283,11 +282,18 @@ app.get("/api/report/:slug", async (req, res) => {
         });
       }
 
-      // Special handling for dates (sd, ed)
-      if (paramName.toLowerCase() === "sd" || paramName.toLowerCase() === "ed") {
+      // Special handling for dates
+      if (
+        paramName.toLowerCase() === "sd" ||
+        paramName.toLowerCase() === "ed" ||
+        paramName.toLowerCase() === "date_range"
+      ) {
         const parts = paramValue.split(/[-\/]/);
-        const dateObj = new Date(parts[2], parts[1] - 1, parts[0]);
-        if (paramName.toLowerCase() === "ed") dateObj.setHours(23, 59, 59, 999);
+        // Create UTC date to match MongoDB stored date
+        const dateObj = new Date(Date.UTC(parts[2], parts[1] - 1, parts[0]));
+        if (paramName.toLowerCase() === "ed" || paramName.toLowerCase() === "date_range") {
+          dateObj.setUTCHours(23, 59, 59, 999); // include full end day
+        }
         ph.parent[ph.path] = dateObj;
       } else {
         // Other parameters, just replace string
