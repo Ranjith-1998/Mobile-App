@@ -244,6 +244,7 @@ app.post("/api/read", async (req, res) => {
   }
 });
 
+//------------------REPORTING API-------------------
 app.get("/api/report/:slug", async (req, res) => {
   try {
     const slug = req.params.slug;
@@ -255,10 +256,10 @@ app.get("/api/report/:slug", async (req, res) => {
 
     if (!report) return res.status(404).json({ error: "Report not found" });
 
-    // 2️⃣ Clone pipeline to avoid modifying the stored one
+    // 2️⃣ Clone pipeline
     const pipeline = JSON.parse(JSON.stringify(report.pipeline));
 
-    // 3️⃣ Find all placeholders in the pipeline
+    // 3️⃣ Collect placeholders
     const placeholders = [];
     function findPlaceholders(obj) {
       if (typeof obj !== "object" || obj === null) return;
@@ -272,32 +273,46 @@ app.get("/api/report/:slug", async (req, res) => {
     }
     pipeline.forEach(stage => findPlaceholders(stage));
 
-    // 4️⃣ Replace placeholders with frontend values
+    // 4️⃣ Replace placeholders
     for (let ph of placeholders) {
-      const paramName = ph.value.replace(/__/g, ""); // "__SD__" -> "SD"
-      const paramValue = req.query[paramName.toLowerCase()]; // frontend sends lowercase names
+      const paramName = ph.value.replace(/__/g, "").toLowerCase(); // "__SD__" -> "sd"
 
-      if (!paramValue) {
-        return res.status(400).json({
-          error: `Please provide parameter: ${paramName.toLowerCase()}`
-        });
-      }
-
-      // Special handling for dates
-      if (
-        paramName.toLowerCase() === "sd" ||
-        paramName.toLowerCase() === "ed" ||
-        paramName.toLowerCase() === "date_range"
-      ) {
-        const parts = paramValue.split(/[-\/]/);
-        // Create UTC date to match MongoDB stored date
-        const dateObj = new Date(Date.UTC(parts[2], parts[1] - 1, parts[0]));
-        if (paramName.toLowerCase() === "ed" || paramName.toLowerCase() === "date_range") {
-          dateObj.setUTCHours(23, 59, 59, 999); // include full end day
+      if (paramName === "date_range") {
+        // Expect query params: sd=dd-mm-yyyy, ed=dd-mm-yyyy
+        const { sd, ed } = req.query;
+        if (!sd || !ed) {
+          return res.status(400).json({
+            error: "Please provide sd and ed query parameters (dd-mm-yyyy)"
+          });
         }
+
+        const parseDate = (str, endOfDay = false) => {
+          const [day, month, year] = str.split(/[-\/]/);
+          const d = new Date(Date.UTC(year, month - 1, day));
+          if (endOfDay) d.setUTCHours(23, 59, 59, 999);
+          return d;
+        };
+
+        const startDate = parseDate(sd);
+        const endDate = parseDate(ed, true);
+
+        ph.parent[ph.path] = { $gte: startDate, $lte: endDate };
+
+      } else if (paramName === "sd" || paramName === "ed") {
+        const paramValue = req.query[paramName];
+        if (!paramValue) {
+          return res.status(400).json({ error: `Please provide parameter: ${paramName}` });
+        }
+        const [day, month, year] = paramValue.split(/[-\/]/);
+        const dateObj = new Date(Date.UTC(year, month - 1, day));
+        if (paramName === "ed") dateObj.setUTCHours(23, 59, 59, 999);
         ph.parent[ph.path] = dateObj;
+
       } else {
-        // Other parameters, just replace string
+        const paramValue = req.query[paramName];
+        if (!paramValue) {
+          return res.status(400).json({ error: `Please provide parameter: ${paramName}` });
+        }
         ph.parent[ph.path] = paramValue;
       }
     }
