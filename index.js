@@ -336,6 +336,30 @@ app.get("/api/report/:slug", async (req, res) => {
   }
 });
 
+// Get User Info
+app.get("/api/userinfo", async (req, res) => {
+  try {
+    const { email } = req.query; // or decode from JWT token
+
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    const user = await db.collection("users").findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.json({
+      firstname: user.firstname,
+      department: user.department,
+      location: user.location,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // ---------------- START SERVER ----------------
 const PORT = process.env.PORT || 5000;
