@@ -33,6 +33,9 @@ const userSchema = new mongoose.Schema({
   userid: String,
   email: { type: String, required: true, unique: true },
   password: String,
+  firstname: String,
+  department: String,
+  location: String,
 });
 const User = mongoose.model("User", userSchema);
 
@@ -345,7 +348,7 @@ app.get("/api/userinfo", async (req, res) => {
       return res.status(400).json({ error: "Email is required" });
     }
 
-    const user = await db.collection("users").findOne({ email });
+    const user = await User.findOne({ email }); // ✅ use Mongoose model
 
     if (!user) {
       return res.status(404).json({ error: "User not found" });
@@ -357,9 +360,11 @@ app.get("/api/userinfo", async (req, res) => {
       location: user.location,
     });
   } catch (err) {
+    console.error("UserInfo API Error:", err);
     res.status(500).json({ error: err.message });
   }
 });
+
 
 // ---------------- EMPLOYEE STATUS API ----------------
 app.get("/api/employeestatus", async (req, res) => {
