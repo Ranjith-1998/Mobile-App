@@ -361,6 +361,52 @@ app.get("/api/userinfo", async (req, res) => {
   }
 });
 
+// ---------------- EMPLOYEE STATUS API ----------------
+app.get("/api/employeestatus", async (req, res) => {
+  try {
+    const token = req.headers["authorization"]?.split(" ")[1];
+    if (!token) return res.status(401).json({ error: "Token missing" });
+
+    // verify JWT
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ error: "Invalid or expired token" });
+    }
+
+    const dbCollection = db.collection("bcslbasic");
+
+    // Aggregate counts by status
+    const statusCounts = await dbCollection.aggregate([
+      {
+        $group: {
+          _id: "$status",
+          count: { $sum: 1 },
+        },
+      },
+    ]).toArray();
+
+    const result = {
+      present: 0,
+      absent: 0,
+      half: 0,
+    };
+
+    statusCounts.forEach((item) => {
+      const status = (item._id || "").toLowerCase();
+      if (status === "present") result.present = item.count;
+      else if (status === "absent") result.absent = item.count;
+      else if (status === "half") result.half = item.count;
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error("Employee Status API error:", err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 // ---------------- START SERVER ----------------
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
